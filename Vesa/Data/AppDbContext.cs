@@ -8,6 +8,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     : IdentityDbContext<AppUser>(options)
 {
     public DbSet<VisaApplication> VisaApplications => Set<VisaApplication>();
+    public DbSet<ApplicationStatusHistory> ApplicationStatusHistories => Set<ApplicationStatusHistory>();
     public DbSet<Country> Countries => Set<Country>();
     public DbSet<VisaType> VisaTypes => Set<VisaType>();
     public DbSet<Document> Documents => Set<Document>();

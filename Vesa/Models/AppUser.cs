@@ -8,4 +8,6 @@ public class AppUser : IdentityUser
     public string NationalId { get; set; } = string.Empty;
     public DateOnly DateOfBirth { get; set; }
     public DateTime CreatedAt { get; set; }
+    public bool IsRestricted { get; set; }
+    public string? RestrictionReason { get; set; }
 }

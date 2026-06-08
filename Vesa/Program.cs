@@ -67,6 +67,8 @@ builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 builder.Services.AddScoped<IAppointmentSlotService, AppointmentSlotService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddHostedService<AppointmentReminderBackgroundService>();
 
 // 5. FluentValidation Auto-validation

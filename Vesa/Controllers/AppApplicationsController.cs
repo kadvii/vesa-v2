@@ -70,4 +70,26 @@ public class AppApplicationsController(IVisaApplicationService applicationServic
 
         return Ok(new { message = "Application cancelled successfully." });
     }
+
+    [HttpGet("{id:guid}/timeline")]
+    public async Task<IActionResult> GetTimeline(Guid id)
+    {
+        var applicantId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(applicantId))
+            return Unauthorized();
+
+        try
+        {
+            var application = await applicationService.GetByIdAsync(id, applicantId, isAdmin: false);
+            if (application is null)
+                return NotFound();
+
+            var timeline = await applicationService.GetStatusHistoryAsync(id);
+            return Ok(timeline);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+    }
 }

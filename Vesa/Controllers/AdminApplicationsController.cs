@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Vesa.DTOs.Applications;
+using Vesa.Models.Enums;
 using Vesa.Services.Interfaces;
 
 namespace Vesa.Controllers;
@@ -14,9 +15,14 @@ public class AdminApplicationsController(
     IDocumentService documentService) : ControllerBase
 {
     [HttpGet]
-    public async Task<IActionResult> GetAll()
+    public async Task<IActionResult> GetAll(
+        [FromQuery] VisaApplicationStatus? status,
+        [FromQuery] Guid? countryId,
+        [FromQuery] DateTime? from,
+        [FromQuery] DateTime? to,
+        [FromQuery] string? search)
     {
-        var applications = await applicationService.GetAllAsync();
+        var applications = await applicationService.GetAllAsync(status, countryId, from, to, search);
         return Ok(applications);
     }
 
@@ -69,5 +75,16 @@ public class AdminApplicationsController(
     {
         var documents = await documentService.GetByApplicationIdAsync(id, string.Empty, isAdmin: true);
         return Ok(documents);
+    }
+
+    [HttpGet("{id:guid}/timeline")]
+    public async Task<IActionResult> GetTimeline(Guid id)
+    {
+        var application = await applicationService.GetByIdAsync(id, string.Empty, isAdmin: true);
+        if (application is null)
+            return NotFound();
+
+        var timeline = await applicationService.GetStatusHistoryAsync(id);
+        return Ok(timeline);
     }
 }

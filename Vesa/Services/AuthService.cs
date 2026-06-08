@@ -92,4 +92,58 @@ public class AuthService(
             Roles = roles
         }, null);
     }
+
+    public async Task<ProfileResponse?> GetProfileAsync(string userId)
+    {
+        var user = await userManager.FindByIdAsync(userId);
+        if (user is null)
+            return null;
+
+        return new ProfileResponse
+        {
+            Id = user.Id,
+            FullName = user.FullName,
+            Email = user.Email ?? string.Empty,
+            PhoneNumber = user.PhoneNumber ?? string.Empty,
+            NationalId = user.NationalId,
+            DateOfBirth = user.DateOfBirth,
+            CreatedAt = user.CreatedAt
+        };
+    }
+
+    public async Task<(bool success, string? error)> UpdateProfileAsync(string userId, UpdateProfileRequest request)
+    {
+        var user = await userManager.FindByIdAsync(userId);
+        if (user is null)
+            return (false, "User not found.");
+
+        user.FullName = request.FullName;
+        user.PhoneNumber = request.PhoneNumber;
+        user.DateOfBirth = request.DateOfBirth;
+
+        var result = await userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+        {
+            var errorMsg = string.Join(" ", result.Errors.Select(e => e.Description));
+            return (false, errorMsg);
+        }
+
+        return (true, null);
+    }
+
+    public async Task<(bool success, string? error)> ChangePasswordAsync(string userId, ChangePasswordRequest request)
+    {
+        var user = await userManager.FindByIdAsync(userId);
+        if (user is null)
+            return (false, "User not found.");
+
+        var result = await userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
+        if (!result.Succeeded)
+        {
+            var errorMsg = string.Join(" ", result.Errors.Select(e => e.Description));
+            return (false, errorMsg);
+        }
+
+        return (true, null);
+    }
 }

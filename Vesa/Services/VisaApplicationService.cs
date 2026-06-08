@@ -113,15 +113,37 @@ public class VisaApplicationService(
         return (true, null);
     }
 
-    public async Task<IList<ApplicationResponse>> GetAllAsync()
+    public async Task<IList<ApplicationResponse>> GetAllAsync(
+        VisaApplicationStatus? status,
+        Guid? countryId,
+        DateTime? from,
+        DateTime? to,
+        string? search)
     {
-        var apps = await db.VisaApplications
+        var query = db.VisaApplications
             .Include(a => a.Applicant)
             .Include(a => a.VisaType)
             .Include(a => a.Country)
-            .OrderByDescending(a => a.SubmittedAt)
-            .ToListAsync();
+            .AsQueryable();
 
+        if (status.HasValue)
+            query = query.Where(a => a.Status == status);
+
+        if (countryId.HasValue)
+            query = query.Where(a => a.CountryId == countryId);
+
+        if (from.HasValue)
+            query = query.Where(a => a.SubmittedAt >= from.Value);
+
+        if (to.HasValue)
+            query = query.Where(a => a.SubmittedAt <= to.Value);
+
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(a =>
+                a.PassportNumber.Contains(search) ||
+                a.Applicant.FullName.Contains(search));
+
+        var apps = await query.OrderByDescending(a => a.SubmittedAt).ToListAsync();
         return apps.Select(ToResponse).ToList();
     }
 
@@ -144,6 +166,7 @@ public class VisaApplicationService(
             }
         }
 
+        var oldStatus = app.Status;
         app.Status = request.Status;
         app.ReviewedByAdminId = adminId;
         app.ReviewedAt = DateTime.UtcNow;
@@ -158,6 +181,18 @@ public class VisaApplicationService(
             app.RejectionReason = null;
         }
 
+        await db.SaveChangesAsync();
+
+        db.ApplicationStatusHistories.Add(new ApplicationStatusHistory
+        {
+            Id = Guid.NewGuid(),
+            ApplicationId = id,
+            OldStatus = oldStatus,
+            NewStatus = request.Status,
+            ChangedAt = DateTime.UtcNow,
+            ChangedByAdminId = adminId,
+            Notes = request.AdminNotes
+        });
         await db.SaveChangesAsync();
 
         await notificationService.CreateAsync(
@@ -208,6 +243,16 @@ public class VisaApplicationService(
         return (true, null);
     }
 
+    public async Task<IList<ApplicationStatusHistoryResponse>> GetStatusHistoryAsync(Guid applicationId)
+    {
+        var histories = await db.ApplicationStatusHistories
+            .Where(h => h.ApplicationId == applicationId)
+            .OrderBy(h => h.ChangedAt)
+            .ToListAsync();
+
+        return histories.Select(ToHistoryResponse).ToList();
+    }
+
     private static ApplicationResponse ToResponse(VisaApplication a) => new()
     {
         Id = a.Id,
@@ -227,5 +272,16 @@ public class VisaApplicationService(
         SubmittedAt = a.SubmittedAt,
         ReviewedAt = a.ReviewedAt,
         ReviewedByAdminId = a.ReviewedByAdminId
+    };
+
+    private static ApplicationStatusHistoryResponse ToHistoryResponse(ApplicationStatusHistory h) => new()
+    {
+        Id = h.Id,
+        ApplicationId = h.ApplicationId,
+        OldStatus = h.OldStatus.ToString(),
+        NewStatus = h.NewStatus.ToString(),
+        ChangedAt = h.ChangedAt,
+        ChangedByAdminId = h.ChangedByAdminId,
+        Notes = h.Notes
     };
 }
